@@ -23,6 +23,7 @@ public class GameManager : MonoBehaviour
     [Header("Enemy")]
 
     public int enemyLevelUpBase = 2;
+    public Material enemyCardBack;
     public List<Hero> selectedEnemyHeroes;
     public List<HeroCard> enemyHeroCards;
     public List<Ability> enemyDeck;
@@ -59,11 +60,11 @@ public class GameManager : MonoBehaviour
     }
 
     public Ability testUnit;
-    private void GiveTestUnits(){
-        for(var i = 0; i < 2; i++){
-            em.SummonUnit(testUnit);
-        }
-    }
+    // private void GiveTestUnits(){
+    //     for(var i = 0; i < 2; i++){
+    //         em.SummonUnit(testUnit);
+    //     }
+    // }
 
 
     private void ChooseStarter(){
@@ -157,22 +158,22 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
     public IEnumerator DrawEnemyCards(int amount){        
         for(var i = 0; i < amount; i++){
             enemyDrawnCards.Add(enemyDeck[0]);
-            // var cardDrawVisual = Instantiate(bm.topCardVisual as TopCardVisual);
-            // cardDrawVisual.ability = enemyDeck[0];
-            // cardDrawVisual.UpdateCardVisual(playerCardBack);
+            var cardDrawVisual = Instantiate(bm.topCardVisual as TopCardVisual);
+            cardDrawVisual.ability = enemyDeck[0];
+            cardDrawVisual.UpdateCardVisual(enemyCardBack);
 
-            // todo: update animations for enemy
-            // cardDrawVisual.transform.SetParent(bm.playerDeckVisual.transform.parent);
-            // cardDrawVisual.transform.position = bm.playerDeckVisual.transform.position;
-            // cardDrawVisual.transform.localRotation = Quaternion.Euler(new Vector3(-90, 0, 0));
+            cardDrawVisual.transform.SetParent(bm.enemyDeckVisual.transform.parent, worldPositionStays: false);
+            cardDrawVisual.transform.position = bm.enemyDeckVisual.transform.position;
+            cardDrawVisual.transform.localRotation = Quaternion.Euler(new Vector3(-90, 0, 0));
 
-            // LeanTween.moveLocal(cardDrawVisual.gameObject, bm.playerDrawToPos, 0.25f);
-            // LeanTween.rotateLocal(cardDrawVisual.gameObject, new Vector3(60, 0, 0), 0.25f);
-            // yield return new WaitForSeconds(0.25f);
-            // Destroy(cardDrawVisual.gameObject);
+            LeanTween.moveLocal(cardDrawVisual.gameObject, bm.enemyDrawToPos, 0.25f);
+            LeanTween.rotateLocal(cardDrawVisual.gameObject, new Vector3(-60, 0, 0), 0.25f);
+            yield return new WaitForSeconds(0.25f);
+            Destroy(cardDrawVisual.gameObject);
             ui.ShowEnemyCardDraw(enemyDeck[0]);
             enemyDeck.RemoveAt(0);
         }
@@ -203,142 +204,334 @@ public class GameManager : MonoBehaviour
         enemyDeck.Shuffle();
     }
 
- public bool PlayerUseAbility(Ability ab, GameObject target){
-        var _hero = target.GetComponent<HeroCard>();
-        var _unit = target.GetComponent<UnitCard>();
+    // public bool PlayerUseAbility(Ability ab, GameObject target){
+    //         var _hero = target.GetComponent<HeroCard>();
+    //         var _unit = target.GetComponent<UnitCard>();
 
-        HeroCard.Ownership _ownership;
+    //         HeroCard.Ownership _ownership;
 
-        if(_hero){
-            _ownership = _hero.ownership;
-        } else {
-            _ownership = _unit.ownership;
+    //         if(_hero){
+    //             _ownership = _hero.ownership;
+    //         } else {
+    //             _ownership = _unit.ownership;
+    //         }
+
+    //         // -------------- targeting enemy --------------
+    //         if(ab.targetType == Ability.TargetType.Enemy){
+    //             if(_ownership == HeroCard.Ownership.Enemy){
+
+    //                 // targeting enemy with damage
+    //                 if(ab.abilityType == Ability.AbilityType.Damage){
+    //                     int totalDamage = 0;
+    //                     if(_hero){
+    //                         totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _hero.armor, 0); 
+    //                         if(totalDamage == 0){
+    //                             _hero.armor = Mathf.Max(_hero.armor - (ab.baseAmount + ab.modifier));
+    //                         } else {
+    //                             _hero.hp -= totalDamage;
+    //                         }
+                            
+    //                     } else {
+    //                         totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _unit.hp, 0); 
+    //                         if(totalDamage == 0){
+    //                             int armorBeforeHit = _unit.armor;
+    //                             _unit.armor = Mathf.Max(_unit.armor - (ab.baseAmount + ab.modifier), 0);
+    //                             if(_unit.armor == 0){
+    //                                 _unit.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
+    //                             }
+    //                         } else {
+    //                             _unit.hp -= totalDamage;
+    //                         }
+    //                     }
+    //                     CheckForDeath(target);
+    //                 }
+
+    //             } else {
+    //                 Debug.Log("Target isn't an enemy");
+    //                 return false;
+    //             }
+    //         }
+
+    //         // --------- target is ally -------------
+    //         if(ab.targetType == Ability.TargetType.Ally){
+    //             if(_ownership == HeroCard.Ownership.Player){
+
+    //                 // buffs
+    //                 if(ab.abilityType == Ability.AbilityType.Alteration){
+    //                     // add armor
+    //                     if(ab.alterationType == Ability.AlterationType.Armor){
+    //                         int _amount = ab.baseAmount + ab.modifier;
+    //                         if(_hero){
+    //                             _hero.armor += _amount;
+    //                         } else {
+    //                             _unit.armor += _amount;
+    //                         }
+    //                     }
+
+    //                     if(ab.alterationType == Ability.AlterationType.HP){
+    //                         int _amount = ab.baseAmount + ab.modifier;
+    //                         if(_hero){
+    //                             _hero.hpMod += _amount;
+    //                             _hero.hp += _amount;
+    //                         } else {
+    //                             _unit.hpMod += _amount;
+    //                             _unit.hp += _amount;
+    //                         }
+    //                     }
+
+    //                     if(ab.alterationType == Ability.AlterationType.Damage){
+    //                         int _amount = ab.baseAmount + ab.modifier;
+    //                         if(_hero){
+    //                             Debug.Log("Target is not a unit");
+    //                             return false;
+    //                         } else {
+    //                             _unit.damage += _amount + ab.modifier;
+    //                         }
+    //                     }
+
+    //                 }
+
+    //                 // heal
+    //                 if(ab.abilityType == Ability.AbilityType.Heal){
+    //                     int _amount = ab.baseAmount + ab.modifier;
+    //                         if(_hero){
+    //                             if(_hero.hp >= _hero.hero.baseHP + _hero.hpMod){
+    //                                 Debug.Log("Hero at max HP");
+    //                                 return false;
+    //                             }
+    //                             _hero.hp = Mathf.Min(_hero.hp + _amount, _hero.hero.baseHP + _hero.hpMod);
+    //                         } else {
+    //                             if(_unit.hp >= _unit.unit.baseHP + _hero.hpMod){
+    //                                 Debug.Log("Unit at max HP");
+    //                                 return false;
+    //                             }
+    //                             _unit.hp = Mathf.Min(_unit.hp + _amount, _unit.unit.baseHP + _unit.hpMod);
+    //                         }
+    //                 }
+
+    //             } else {
+    //                 Debug.Log("Target isn't owned by you");
+    //                 return false;
+    //             }       
+    //         }
+
+
+    //         // add status effects if any
+    //         if(ab.statusEffect){
+    //             if(_unit){
+    //                 var _status = ScriptableObject.CreateInstance<StatusEffect>();
+    //                 _status.effectType = ab.statusEffect.effectType;
+    //                 _status.isBad = ab.statusEffect.isBad;
+    //                 _status.fadesAway = ab.statusEffect.fadesAway;
+    //                 _status.roundAdded = round;
+    //                 _unit.statusEffects.Add(_status);
+    //             }
+                
+    //         }
+            
+    //         if(ab.bonusEffect){
+    //             ab.bonusEffect.managers = gameObject;
+    //             ab.bonusEffect.DoTargetExtras(target);
+    //         }
+
+    //         playerMana -= ab.manaCost;
+    //         ui.CancelCast();
+    //         ui.UpdateManaDisplay();
+    //         return true;
+    //     }
+
+
+    public IEnumerator AbilityGoesOff(Ability ab, bool playerCast, GameObject target = null, GameObject selectedPosition = null){
+
+        // todo: add in multi target stuff for all other ability types, not just damage
+       
+        // unit summoned
+        if(ab.abilityType == Ability.AbilityType.Summon){
+            UnitSummoned(ab, playerCast, selectedPosition);
         }
 
-        // -------------- targeting enemy --------------
-        if(ab.targetType == Ability.TargetType.Enemy){
-            if(_ownership == HeroCard.Ownership.Enemy){
+        // damage dealt
+        if(ab.abilityType == Ability.AbilityType.Damage){
 
-                // targeting enemy with damage
-                if(ab.abilityType == Ability.AbilityType.Damage){
-                    int totalDamage = 0;
-                    if(_hero){
-                        totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _hero.armor, 0); 
-                        if(totalDamage == 0){
-                            _hero.armor = Mathf.Max(_hero.armor - (ab.baseAmount + ab.modifier));
-                        } else {
-                            _hero.hp -= totalDamage;
-                        }
-                        
-                    } else {
-                        totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _unit.hp, 0); 
-                        if(totalDamage == 0){
-                            int armorBeforeHit = _unit.armor;
-                            _unit.armor = Mathf.Max(_unit.armor - (ab.baseAmount + ab.modifier), 0);
-                            if(_unit.armor == 0){
-                                _unit.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
-                            }
-                        } else {
-                            _unit.hp -= totalDamage;
-                        }
+            // if its a board target
+            if(ab.targetType == Ability.TargetType.AllEnemies){
+
+                // cast from player
+                if(playerCast){
+                    foreach(UnitCard unit in enemyUnits.FindAll(x => x != null)){
+                        DamageDealt(ab, unit.gameObject);
                     }
-                    CheckForDeath(target);
+                // cast from enemy
+                } else {
+                    foreach(UnitCard unit in playerUnits.FindAll(x => x !=null)){
+                        DamageDealt(ab, unit.gameObject);
+                    }
                 }
 
-            } else {
-                Debug.Log("Target isn't an enemy");
-                return false;
-            }
-        }
-
-        // --------- target is ally -------------
-        if(ab.targetType == Ability.TargetType.Ally){
-            if(_ownership == HeroCard.Ownership.Player){
-
-                // buffs
-                if(ab.abilityType == Ability.AbilityType.Alteration){
-                    // add armor
-                    if(ab.alterationType == Ability.AlterationType.Armor){
-                        int _amount = ab.baseAmount + ab.modifier;
-                        if(_hero){
-                            _hero.armor += _amount;
-                        } else {
-                            _unit.armor += _amount;
-                        }
-                    }
-
-                    if(ab.alterationType == Ability.AlterationType.HP){
-                        int _amount = ab.baseAmount + ab.modifier;
-                        if(_hero){
-                            _hero.hpMod += _amount;
-                            _hero.hp += _amount;
-                        } else {
-                            _unit.hpMod += _amount;
-                            _unit.hp += _amount;
-                        }
-                    }
-
-                    if(ab.alterationType == Ability.AlterationType.Damage){
-                        int _amount = ab.baseAmount + ab.modifier;
-                        if(_hero){
-                            Debug.Log("Target is not a unit");
-                            return false;
-                        } else {
-                            _unit.damage += _amount + ab.modifier;
-                        }
-                    }
-
-                }
-
-                // heal
-                if(ab.abilityType == Ability.AbilityType.Heal){
-                    int _amount = ab.baseAmount + ab.modifier;
-                        if(_hero){
-                            if(_hero.hp >= _hero.hero.baseHP + _hero.hpMod){
-                                Debug.Log("Hero at max HP");
-                                return false;
-                            }
-                            _hero.hp = Mathf.Min(_hero.hp + _amount, _hero.hero.baseHP + _hero.hpMod);
-                        } else {
-                            if(_unit.hp >= _unit.unit.baseHP + _hero.hpMod){
-                                Debug.Log("Unit at max HP");
-                                return false;
-                            }
-                            _unit.hp = Mathf.Min(_unit.hp + _amount, _unit.unit.baseHP + _unit.hpMod);
-                        }
-                }
-
-            } else {
-                Debug.Log("Target isn't owned by you");
-                return false;
-            }       
-        }
-
-
-        // add status effects if any
-        if(ab.statusEffect){
-            if(_unit){
-                var _status = ScriptableObject.CreateInstance<StatusEffect>();
-                _status.effectType = ab.statusEffect.effectType;
-                _status.isBad = ab.statusEffect.isBad;
-                _status.fadesAway = ab.statusEffect.fadesAway;
-                _status.roundAdded = round;
-                _unit.statusEffects.Add(_status);
+            // ability is single target damage type
+            } else if(ab.targetType == Ability.TargetType.Enemy) {
+                DamageDealt(ab, target);
             }
             
         }
-        
-        if(ab.bonusEffect){
-            ab.bonusEffect.managers = gameObject;
-            ab.bonusEffect.DoExtras(target);
+
+        // buffing
+        if(ab.abilityType == Ability.AbilityType.Alteration){
+            BuffUsed(ab, target);
         }
 
-        playerMana -= ab.manaCost;
-        ui.CancelCast();
+        // healing
+        if(ab.abilityType == Ability.AbilityType.Heal){
+            HealUsed(ab, target);
+        }
+
+        StatusAndBonusEffects(ab, target);
+
+        if(playerCast){
+            playerMana -= ab.manaCost;
+        } else{
+            enemyMana -= ab.manaCost;
+        }
+
+        if(playerCast){
+            Debug.Log($"---- Player used {ab} --------");
+        } else {
+            Debug.Log($"---- Enemy used {ab} --------");
+        }
+
         ui.UpdateManaDisplay();
-        return true;
+        yield return null;
     }
 
+
+    private void UnitSummoned(Ability ab, bool playerCast, GameObject selectedPosition = null){
+           
+        var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
+        
+        _unitCard.unit = ab.summonedUnit;
+        _unitCard.unit.managers = gameObject;
+
+
+        if(playerCast){
+            _unitCard.ownership = HeroCard.Ownership.Player;
+            _unitCard.SetUpUnit();
+            var overPos = selectedPosition.transform.position;
+            var downPos = selectedPosition.transform.position;
+            overPos.y += 1;
+            downPos.y = 0.01f;
+            _unitCard.transform.position = overPos;    
+            LeanTween.move(_unitCard.gameObject, downPos, 0.25f);
+            var posIndex = selectedPosition.transform.GetSiblingIndex();
+            playerUnits[posIndex] = _unitCard;
+            _unitCard.name = $"Player's {_unitCard.unit.unitName} (Position: {posIndex})";
+
+        } else {
+            _unitCard.ownership = HeroCard.Ownership.Enemy;
+            _unitCard.SetUpUnit();
+            em.ChooseSummonPosition(_unitCard);       
+        }
+
+       
+        ui.UpdateManaDisplay();
+
+        if(_unitCard.unit.cardEffect){
+            _unitCard.unit.cardEffect.managers = gameObject;
+            _unitCard.unit.cardEffect.attachedCard = _unitCard;
+            _unitCard.unit.cardEffect.DoSummonExtras();
+        }
+        _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
+   
+    }
+    private void DamageDealt(Ability ab, GameObject target){
+        HeroCard heroCardTarget = target.GetComponent<HeroCard>();
+        UnitCard unitCardTarget = target.GetComponent<UnitCard>();
+        if(ab.abilityType == Ability.AbilityType.Damage){
+            int totalDamage = 0;
+            if(heroCardTarget){
+                totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - heroCardTarget.armor, 0); 
+                if(totalDamage == 0){
+                    heroCardTarget.armor = Mathf.Max(heroCardTarget.armor - (ab.baseAmount + ab.modifier));
+                } else {
+                    heroCardTarget.hp -= totalDamage;
+                }
+                
+            } else {
+                totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - unitCardTarget.hp, 0); 
+                if(totalDamage == 0){
+                    int armorBeforeHit = unitCardTarget.armor;
+                    unitCardTarget.armor = Mathf.Max(unitCardTarget.armor - (ab.baseAmount + ab.modifier), 0);
+                    if(unitCardTarget.armor == 0){
+                        unitCardTarget.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
+                    }
+                } else {
+                    unitCardTarget.hp -= totalDamage;
+                }
+            }
+            CheckForDeath(target);
+        }
+    }
+
+    private void BuffUsed(Ability ab, GameObject target){
+        HeroCard heroCardTarget = target.GetComponent<HeroCard>();
+        UnitCard unitCardTarget = target.GetComponent<UnitCard>();
+            if(ab.abilityType == Ability.AbilityType.Alteration){
+                if(ab.alterationType == Ability.AlterationType.Armor){
+                    if(unitCardTarget){
+                        unitCardTarget.armor += ab.baseAmount;
+                    } else {
+                        heroCardTarget.armor += ab.baseAmount;
+                    }
+                } else if(ab.alterationType == Ability.AlterationType.HP){
+                    if(unitCardTarget){
+                        unitCardTarget.hp += ab.baseAmount;
+                    } else {
+                        heroCardTarget.hp += ab.baseAmount;
+                    }                  
+                } else if(ab.alterationType == Ability.AlterationType.Damage){
+                    if(unitCardTarget){
+                        unitCardTarget.damage += ab.baseAmount;
+                        //note: do I add a damage modifier for abilities for heroes?
+                    }
+                }
+            }
+    }
+
+    private void HealUsed(Ability ab, GameObject target){
+        HeroCard heroCardTarget = target.GetComponent<HeroCard>();
+        UnitCard unitCardTarget = target.GetComponent<UnitCard>();
+        if(ab.abilityType == Ability.AbilityType.Heal){
+            int _amount = ab.baseAmount + ab.modifier;
+            if(heroCardTarget){
+                heroCardTarget.hp = Mathf.Min(heroCardTarget.hp + _amount, heroCardTarget.hero.baseHP + heroCardTarget.hpMod);
+            } else {
+                unitCardTarget.hp = Mathf.Min(unitCardTarget.hp + _amount, unitCardTarget.unit.baseHP + unitCardTarget.hpMod);
+            }
+        }
+    }
+
+    private void StatusAndBonusEffects(Ability ab, GameObject target){
+        if(target){
+            HeroCard heroCardTarget = target.GetComponent<HeroCard>();
+            UnitCard unitCardTarget = target.GetComponent<UnitCard>();
+            if(ab.statusEffect){         
+                if(unitCardTarget){
+                    var _status = ScriptableObject.CreateInstance<StatusEffect>();
+                    _status.effectType = ab.statusEffect.effectType;
+                    _status.isBad = ab.statusEffect.isBad;
+                    _status.fadesAway = ab.statusEffect.fadesAway;
+                    _status.roundAdded = round;
+                    unitCardTarget.statusEffects.Add(_status);
+                }       
+            }
+        }
+        
+        // have all bonus effects go off    
+        if(ab.bonusEffect){
+            ab.bonusEffect.managers = gameObject;
+            ab.bonusEffect.DoTargetExtras(target);
+        }
+    }
+    
     public void CheckForDeath(GameObject target){
         var _hero = target.GetComponent<HeroCard>();
         var _unit = target.GetComponent<UnitCard>();
@@ -352,7 +545,14 @@ public class GameManager : MonoBehaviour
 
         if(_hpValue <= 0){
             Debug.Log($"{target.name} died");
-            Destroy(target.gameObject);
+            // remove if unit
+            if(target.GetComponent<UnitCard>()){
+                Destroy(target.gameObject);
+            // otherwise do animation thing
+            } else {
+
+            }
+            
         }
     }
 

@@ -75,7 +75,7 @@ public class PlayerManager : MonoBehaviour
 
                         // target is a unit slot
                         if(bm.playerUnitCards.Contains(clicked.transform.gameObject) || bm.enemyUnitCards.Contains(clicked.transform.gameObject)){
-                            SummonUnit(readiedAbility, clicked.transform.gameObject);
+                            StartCoroutine(gm.AbilityGoesOff(readiedAbility, true, null, clicked.transform.gameObject));
                             ui.CancelCast();
                             if(selectedCard){
                                 gm.playerDrawnCards[selectedCard.transform.GetSiblingIndex()] = null;
@@ -87,9 +87,10 @@ public class PlayerManager : MonoBehaviour
                     } else {
                         // ability is not a summon
                         if(!_heroCard && !_unitCard){return;} 
-                        if(!gm.PlayerUseAbility(readiedAbility, clicked.transform.gameObject)){
-                            return;
-                        }
+
+                        StartCoroutine(gm.AbilityGoesOff(readiedAbility, true, clicked.transform.gameObject));
+                        ui.CancelCast();
+                        
 
                         // if the source was from a card, get rid of that card
                         if(selectedCard){
@@ -106,75 +107,6 @@ public class PlayerManager : MonoBehaviour
        
         }
     }
-
-
-
-    // --------- DEPRECATED ----------
-    // public void EnemySummonsUnit(Ability ab, GameObject selectedPosition){
-    //     var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
-        
-    //     _unitCard.unit = ab.summonedUnit;
-
-    //     _unitCard.unit.managers = gameObject;
-    //     _unitCard.ownership = HeroCard.Ownership.Enemy;
-    //     _unitCard.SetUpUnit();
-
-    //     var overPos = selectedPosition.transform.position;
-    //     var downPos = selectedPosition.transform.position;
-    //     overPos.y += 1;
-    //     downPos.y = 0.01f;
-    //     _unitCard.transform.position = overPos;
-         
-    //     LeanTween.move(_unitCard.gameObject, downPos, 0.25f);
-
-    //     var posIndex = selectedPosition.transform.GetSiblingIndex();
-    //     gm.enemyUnits[posIndex] = _unitCard;
-    //     gm.enemyMana -= ab.manaCost;
-    //     _unitCard.name = $"Enemy's {_unitCard.unit.unitName} (Position: {posIndex})";
-    //     ui.UpdateManaDisplay();
-    //     foreach(CardBonusEffects effect in _unitCard.unit.cardEffects){
-    //         effect.managers = gameObject;
-    //         effect.attachedCard = _unitCard;
-    //         effect.DoExtras();
-    //     }
-    //     _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
-    // }
-
-
-    public void SummonUnit(Ability ab, GameObject selectedPosition){
-        var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
-        
-        _unitCard.unit = ab.summonedUnit;
-
-        _unitCard.unit.managers = gameObject;
-        _unitCard.ownership = HeroCard.Ownership.Player;
-        _unitCard.SetUpUnit();
-
-        var overPos = selectedPosition.transform.position;
-        var downPos = selectedPosition.transform.position;
-        overPos.y += 1;
-        downPos.y = 0.01f;
-        _unitCard.transform.position = overPos;
-         
-        LeanTween.move(_unitCard.gameObject, downPos, 0.25f);
-
-        var posIndex = selectedPosition.transform.GetSiblingIndex();
-        gm.playerUnits[posIndex] = _unitCard;
-        gm.playerMana -= ab.manaCost;
-
-        _unitCard.name = $"Player's {_unitCard.unit.unitName} (Position: {posIndex})";
-       
-        ui.UpdateManaDisplay();
-        if(_unitCard.unit.cardEffect){
-            _unitCard.unit.cardEffect.managers = gameObject;
-            _unitCard.unit.cardEffect.attachedCard = _unitCard;
-            _unitCard.unit.cardEffect.DoExtras();
-        }
-        _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
-    }
-
-   
-
 
 
     private bool OverUI(){
@@ -207,6 +139,7 @@ public class PlayerManager : MonoBehaviour
             foreach(var thing in results){
                 UI_DrawnCard _drawnCard = thing.gameObject.GetComponent<UI_DrawnCard>();
                 if(_drawnCard){
+                    if(_drawnCard.enemyCover.activeSelf){return;}
                     // if clicked in corner vs in view mode
 
                     // card is in center view 

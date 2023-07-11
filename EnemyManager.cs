@@ -102,7 +102,7 @@ public class EnemyManager : MonoBehaviour
             // unlock costs too much
             //todo: caught in loop, doesn't see it can level up due to negative value score
             if(levelUpCost > gm.enemyMana){
-                Debug.Log($"Costs too much to unlock {nextUnlock}");
+                // Debug.Log($"Costs too much to unlock {nextUnlock}");
                 unlockChecks += 1;
                 continue;
             }
@@ -110,7 +110,7 @@ public class EnemyManager : MonoBehaviour
             // Note: adjust the multiplier. 
             float abValue = DetermineAbilityValue(nextUnlock) * (nextUnlock.barPosition * 1.2f);
             abValue -= (levelUpCost);
-            Debug.Log($"Will cost {levelUpCost} to unlock {nextUnlock}. Value of ({abValue})");
+            // Debug.Log($"Will cost {levelUpCost} to unlock {nextUnlock}. Value of ({abValue})");
             if(abValue >= highestActionValue && abValue >= highestUnlockValue && gm.enemyMana >= levelUpCost){
                 highestUnlockValue = abValue;
                 chosenUnlock = nextUnlock;
@@ -126,11 +126,11 @@ public class EnemyManager : MonoBehaviour
             return false;
         }
 
-        Debug.Log("------");
-        Debug.Log(abilityUnlockPossible);
-        Debug.Log(gm.enemyHeroCards.FindAll(x => x.hp > 0).Count);
-        Debug.Log(unlockChecks);
-        Debug.Log("------");
+        // Debug.Log("------");
+        // Debug.Log(abilityUnlockPossible);
+        // Debug.Log(gm.enemyHeroCards.FindAll(x => x.hp > 0).Count);
+        // Debug.Log(unlockChecks);
+        // Debug.Log("------");
 
 
         if(chosenUnlock){
@@ -252,8 +252,10 @@ public class EnemyManager : MonoBehaviour
         foreach(HeroCard heroCard in gm.enemyHeroCards){
             if(!heroCard){continue;}
             foreach(Ability ab in heroCard.hero.abilities){
-                if(!ab.locked && !ignoredAbilitiesThisTurn.Contains(ab)){
+                if(!ab.locked && !ignoredAbilitiesThisTurn.Contains(ab) && !ab.usedThisRound){
                     if(ab.manaCost <= gm.enemyMana){
+                        // Debug.Log(ab);
+                        // Debug.Log("Can Still use hero ability");
                         return true;
                     }
                 }
@@ -263,12 +265,14 @@ public class EnemyManager : MonoBehaviour
         // can play a card
         foreach(Ability ab in gm.enemyDrawnCards){  
             if(ab.manaCost <= gm.enemyMana && !ignoredAbilitiesThisTurn.Contains(ab)){
+                // Debug.Log("Can Play Card");
                 return true;
             }  
         }
 
         // can level something up
         if(ShouldLevelUpHero() && abilityUnlockPossible){
+            // Debug.Log("Can Level Up hero");
             return true;
         }
 
@@ -287,7 +291,7 @@ public class EnemyManager : MonoBehaviour
             if(!ab || ignoredAbilitiesThisTurn.Contains(ab) || ab.manaCost > gm.enemyMana){continue;}
 
             float cardValue = DetermineAbilityValue(ab);
-            Debug.Log($"{ab.abilityName} has a value of {cardValue}");
+            // Debug.Log($"{ab.abilityName} has a value of {cardValue}");
             if(cardValue <= 0){
                 ignoredAbilitiesThisTurn.Add(ab);
                 continue;
@@ -300,22 +304,39 @@ public class EnemyManager : MonoBehaviour
         }
 
         //todo: need to check if has mana, but has no target for something it has mana for 
-        if(!chosenAbility){return 0;}
+       
         foreach(HeroCard heroCard in gm.enemyHeroCards){
             if(!heroCard){continue;}
             foreach(Ability ab in heroCard.hero.abilities){
                 if(ab.locked || ab.manaCost > gm.enemyMana || ignoredAbilitiesThisTurn.Contains(ab) || ab.usedThisRound){continue;}
 
-                float cardValue = DetermineAbilityValue(ab);
-                Debug.Log($"{ab.abilityName} has a value of {cardValue}");
-                if(cardValue > highestActionValue){
-                    highestActionValue = cardValue;
+                float abilityValue = DetermineAbilityValue(ab);
+                if(abilityValue == 0){
+                    ignoredAbilitiesThisTurn.Add(ab);
+                    continue;
+                }
+                // Debug.Log($"{ab.abilityName} has a value of {abilityValue}");
+                if(abilityValue > highestActionValue){
+                    highestActionValue = abilityValue;
                     chosenAbility = ab;
                     source = heroCard;
                 }
             }
         }
 
+        if(!chosenAbility){return 0;}
+
+        // if the ability is an all enemies target type, do that and return
+        if(chosenAbility.targetType == Ability.TargetType.AllEnemies){
+            if(!source){
+                EnemyPlaysCard(cardPos);    
+            } else {
+                EnemyHeroUsesAbility(source, chosenAbility);
+            }
+            return highestActionValue;
+        }   
+
+        // find a target for a single target action     
         GameObject target = FindTarget(chosenAbility, highestActionValue);
         if(!target && chosenAbility.abilityType != Ability.AbilityType.Summon){
             // cant find a target for highest chosen
@@ -369,7 +390,7 @@ public class EnemyManager : MonoBehaviour
             turnOngoing = false;
             return null;
         }
-        Debug.Log($"Finding target for {ab}");
+        // Debug.Log($"Finding target for {ab}");
         // if(ab.abilityType == Ability.AbilityType.Summon && ab.summonType == Ability.SummonType.Ally){
         //     StartCoroutine(AbilityGoesOff(ab));
         //     return null;
@@ -468,7 +489,7 @@ public class EnemyManager : MonoBehaviour
 
 
         if(ab.abilityType == Ability.AbilityType.Alteration && ab.targetType == Ability.TargetType.Ally && !ab.usedThisRound){
-            Debug.Log("BUFFING FROM HERE");
+            // Debug.Log("BUFFING FROM HERE");
             chosenTarget = TryToBuff(ab);
         }
 
@@ -698,34 +719,8 @@ public class EnemyManager : MonoBehaviour
 
     }
 
- 
-    public void SummonUnit(Ability ab){
-        var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
-        
-        _unitCard.unit = ab.summonedUnit;
 
-        _unitCard.unit.managers = gameObject;
-        _unitCard.ownership = HeroCard.Ownership.Enemy;
-        _unitCard.SetUpUnit();
-
-        ChooseSummonPosition(_unitCard);
-
-        // gm.enemyMana -= ab.manaCost;
-
-       
-        if(_unitCard.unit.cardEffect){
-            _unitCard.unit.cardEffect.managers = gameObject;
-            _unitCard.unit.cardEffect.attachedCard = _unitCard;
-            _unitCard.unit.cardEffect.DoExtras();
-        }
-        _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
-
-        DetermineUnitValue(_unitCard);
-        Debug.Log($"Enemy summons a {ab.summonedUnit}");
-    }
-
-
-    private void ChooseSummonPosition(UnitCard unitCard){
+    public void ChooseSummonPosition(UnitCard unitCard){
         int chosenPos = 99;
 
         List<int> viableSlots = new List<int>();
@@ -952,126 +947,30 @@ public class EnemyManager : MonoBehaviour
     }
 
     private void EnemyHeroUsesAbility(HeroCard card, Ability ab, GameObject target = null){
-        gm.enemyMana -= ab.manaCost;
+        // gm.enemyMana -= ab.manaCost;
         ab.usedThisRound = true;
-        StartCoroutine(AbilityGoesOff(ab, target));
+        StartCoroutine(gm.AbilityGoesOff(ab, false, target));
         
         // Debug.Log($"{card.hero.heroName} uses {ab.abilityName} on {target}");
     }
 
     private void EnemyPlaysCard(int cardPos, GameObject target = null){
         Ability ab = gm.enemyDrawnCards[cardPos];
-        StartCoroutine(AbilityGoesOff(ab, target));
-        gm.enemyMana -= ab.manaCost;
+        StartCoroutine(gm.AbilityGoesOff(ab, false, target));
+        // gm.enemyMana -= ab.manaCost;
         gm.enemyDrawnCards.RemoveAt(cardPos);
+        Destroy(ui.enemyDrawnCardHolder.transform.GetChild(cardPos).gameObject);
+
+        foreach(Transform _card in ui.enemyDrawnCardHolder.transform){
+            if(_card.gameObject){
+                StartCoroutine(ui.MoveEnemyCardToHand(_card.gameObject.GetComponent<UI_DrawnCard>()));
+            } 
+        }
+
         // Debug.Log($"Enemy uses the {ab.abilityName} card on {target}");
     }
 
- 
-    private IEnumerator AbilityGoesOff(Ability ab, GameObject target = null){
-        yield return null;
 
-        Debug.Log($"Enemy is using {ab} on {target}");
-
-        // just a summon
-        if(ab.abilityType == Ability.AbilityType.Summon){
-            SummonUnit(ab);
-            yield break;
-        }
-
-        // if(ab.abilityType == Ability.AbilityType.Alteration && ab.targetType == Ability.TargetType.Ally){
-        //     target = TryToBuff(ab);
-        // }
-
-   
-
-        if(target){
-            HeroCard heroCardTarget = target.GetComponent<HeroCard>();
-            UnitCard unitCardTarget = target.GetComponent<UnitCard>();
-
-            // damage
-            if(ab.abilityType == Ability.AbilityType.Damage){
-                int totalDamage = 0;
-                if(heroCardTarget){
-                    totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - heroCardTarget.armor, 0); 
-                    if(totalDamage == 0){
-                        heroCardTarget.armor = Mathf.Max(heroCardTarget.armor - (ab.baseAmount + ab.modifier));
-                    } else {
-                        heroCardTarget.hp -= totalDamage;
-                    }
-                    
-                } else {
-                    totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - unitCardTarget.hp, 0); 
-                    if(totalDamage == 0){
-                        int armorBeforeHit = unitCardTarget.armor;
-                        unitCardTarget.armor = Mathf.Max(unitCardTarget.armor - (ab.baseAmount + ab.modifier), 0);
-                        if(unitCardTarget.armor == 0){
-                            unitCardTarget.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
-                        }
-                    } else {
-                        unitCardTarget.hp -= totalDamage;
-                    }
-                }
-                gm.CheckForDeath(target);
-            }
-
-            // buffs
-            if(ab.abilityType == Ability.AbilityType.Alteration){
-                if(ab.alterationType == Ability.AlterationType.Armor){
-                    if(unitCardTarget){
-                        unitCardTarget.armor += ab.baseAmount;
-                    } else {
-                        heroCardTarget.armor += ab.baseAmount;
-                    }
-                } else if(ab.alterationType == Ability.AlterationType.HP){
-                    if(unitCardTarget){
-                        unitCardTarget.hp += ab.baseAmount;
-                    } else {
-                        heroCardTarget.hp += ab.baseAmount;
-                    }                  
-                } else if(ab.alterationType == Ability.AlterationType.Damage){
-                    if(unitCardTarget){
-                        unitCardTarget.damage += ab.baseAmount;
-                        //note: do I add a damage modifier for abilities for heroes?
-                    }
-                }
-            }
-
-            // heals
-             if(ab.abilityType == Ability.AbilityType.Heal){
-                int _amount = ab.baseAmount + ab.modifier;
-                if(heroCardTarget){
-                    heroCardTarget.hp = Mathf.Min(heroCardTarget.hp + _amount, heroCardTarget.hero.baseHP + heroCardTarget.hpMod);
-                } else {
-                    unitCardTarget.hp = Mathf.Min(unitCardTarget.hp + _amount, unitCardTarget.unit.baseHP + unitCardTarget.hpMod);
-                }
-            }
-
-
-            // after effects for targeted ability
-            if(ab.statusEffect){         
-                if(unitCardTarget){
-                    var _status = ScriptableObject.CreateInstance<StatusEffect>();
-                    _status.effectType = ab.statusEffect.effectType;
-                    _status.isBad = ab.statusEffect.isBad;
-                    _status.fadesAway = ab.statusEffect.fadesAway;
-                    _status.roundAdded = gm.round;
-                    unitCardTarget.statusEffects.Add(_status);
-                }       
-            }
-        }
-        
-
-
-        // have all bonus effects go off    
-        if(ab.bonusEffect){
-            ab.bonusEffect.managers = gameObject;
-            ab.bonusEffect.DoExtras(target);
-        }
-
-        Debug.Log($"Enemy uses {ab.abilityName} on {target}");
-
-    }
 
 
     public void GetOwnUnitValues(){
@@ -1121,11 +1020,18 @@ public class EnemyManager : MonoBehaviour
     }
 
     private float DetermineAbilityValue(Ability ab){
+        // Debug.Log($"Active unit targets { gm.playerUnits.FindAll(x => x != null).Count}");
         if(ab.usedThisRound){return 0;}
         // base values
         float pVal = 0;
         pVal += (ab.baseAmount * 1.25f);
         
+        // all enemies damage type
+        if(ab.targetType == Ability.TargetType.AllEnemies){
+            pVal += (ab.baseAmount * gm.playerUnits.FindAll(x => x != null).Count);
+        }
+
+
         if(ab.abilityType == Ability.AbilityType.Summon){
             if(!gm.enemyUnits.Contains(null)){return 0;}
             pVal += (DetermineUnitValue(null, ab.summonedUnit) * 2);
@@ -1146,7 +1052,6 @@ public class EnemyManager : MonoBehaviour
                 // no viable target for the status effect
                 return 0;
             }
-            
         }
 
         if(ab.bonusEffect){

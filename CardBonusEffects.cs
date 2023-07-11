@@ -9,7 +9,15 @@ public class CardBonusEffects : MonoBehaviour
     public float effectValue = 1f;
     [TextArea]
     public string effectDescription;
-    public virtual void DoExtras(GameObject target = null){
+    public virtual void DoTargetExtras(GameObject target = null){
        
+    }
+
+    public virtual void DoSummonExtras(GameObject target = null){
+
+    }
+
+    public virtual void DoTurnChangeExtras(){
+
     }
 }

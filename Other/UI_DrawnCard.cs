@@ -13,6 +13,7 @@ public class UI_DrawnCard : MonoBehaviour
     public TextMeshProUGUI flavorText;
     public TextMeshProUGUI manaCost;
     public Button castButton;
+    public GameObject enemyCover;
 
     [Header("Stored Values")]
     public Vector3 centerViewPosition;

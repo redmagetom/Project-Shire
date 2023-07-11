@@ -38,12 +38,14 @@ public class UIManager : MonoBehaviour
     public Button adwCastButton;
 
     [Header("Ability Cards")]
-    public GameObject drawnCardsHolder;
+    public GameObject playerDrawnCardsHolder;
+    public GameObject enemyDrawnCardHolder;
 
     #region Prefabs
     [Header("Prefabs")]
     public UI_AbilityIcon abilityIconPrefab;
     public UI_DrawnCard drawnCardPrefab;
+    public GameObject enemyDrawnCardPrefab;
 
     #endregion
 
@@ -111,12 +113,21 @@ public class UIManager : MonoBehaviour
     }
 
     private void ReadyAbilityForCasting(Ability _ab){
+
         if(gm.gamePhase != GameManager.Phase.PlayerTurn){return;}
         pm.readiedAbility = _ab;
         if(_ab.category == Ability.Category.HeroAbility){
             pm.selectedCard = null;
         }
+
         CloseHeroSelection();
+
+        if(_ab.targetType == Ability.TargetType.AllEnemies || _ab.targetType == Ability.TargetType.AllAllies){
+            StartCoroutine(gm.AbilityGoesOff(_ab, true));
+            MoveCardsFromCenterToHand();
+            return;
+        }
+
         castingBar.SetActive(true);
         castingBarImage.sprite = _ab.abilityImage;
         castingBarText.text = $"Casting {_ab.abilityName}";
@@ -168,24 +179,32 @@ public class UIManager : MonoBehaviour
         });
         MovePlayerCardToHand(_newCard);
     }
-
-    public void ShowEnemyCardDraw(Ability card){
-        // todo: update an visuals for cards in enemy hand
-        // var _newCard = Instantiate(drawnCardPrefab) as UI_DrawnCard;
-        // _newCard.ability = card;
-        // _newCard.SetUpCard();
-        // _newCard.castButton.onClick.AddListener(delegate{
-        //     ReadyAbilityForCasting(card);
-        // });
-        // MovePlayerCardToHand(_newCard);
-    }
-
-
     private void MovePlayerCardToHand(UI_DrawnCard _newCard){
-        _newCard.transform.SetParent(drawnCardsHolder.transform, worldPositionStays: false);
+        _newCard.transform.SetParent(playerDrawnCardsHolder.transform, worldPositionStays: false);
         _newCard.transform.localPosition = new Vector3(_newCard.transform.GetSiblingIndex() * 50, 0, 0);
         _newCard.transform.localRotation = Quaternion.Euler(new Vector3(0, 0, -3 * _newCard.transform.GetSiblingIndex()));
         _newCard.transform.localScale = new Vector3(1,1,1);
+        _newCard.handPos = _newCard.transform.GetSiblingIndex();
+        _newCard.centerViewPosition = Vector3.zero;
+        _newCard.castButton.gameObject.SetActive(false);
+    }
+
+    public void ShowEnemyCardDraw(Ability card){
+        var _newCard = Instantiate(drawnCardPrefab as UI_DrawnCard);
+        _newCard.ability = card;
+        _newCard.enemyCover.SetActive(true);
+        _newCard.SetUpCard();
+        StartCoroutine(MoveEnemyCardToHand(_newCard));
+    }
+
+
+    public IEnumerator MoveEnemyCardToHand(UI_DrawnCard _newCard){
+        yield return new WaitForSeconds(0.01f);
+        if(!_newCard){yield break;}
+        _newCard.transform.SetParent(enemyDrawnCardHolder.transform, worldPositionStays: false);
+        _newCard.transform.localPosition = new Vector3(_newCard.transform.GetSiblingIndex() * 50, 0, 0);
+        _newCard.transform.localRotation = Quaternion.Euler(new Vector3(0, 0, 3 * _newCard.transform.GetSiblingIndex()));
+        _newCard.transform.localScale = new Vector3(0.4f ,0.4f , 0.4f);
         _newCard.handPos = _newCard.transform.GetSiblingIndex();
         _newCard.centerViewPosition = Vector3.zero;
         _newCard.castButton.gameObject.SetActive(false);
@@ -197,7 +216,7 @@ public class UIManager : MonoBehaviour
         centerCardView.GetComponent<GridLayoutGroup>().enabled = true;
 
         List<Transform> _cardsToMove = new List<Transform>();
-        foreach(Transform card in drawnCardsHolder.transform){
+        foreach(Transform card in playerDrawnCardsHolder.transform){
             _cardsToMove.Add(card);
         }
 
@@ -234,7 +253,7 @@ public class UIManager : MonoBehaviour
 
 
     public void MoveCardsFromCenterToHand(){
-        if(drawnCardsHolder.transform.childCount != 0){return;}
+        if(playerDrawnCardsHolder.transform.childCount != 0){return;}
         CloseHeroSelection();
         List<Transform> _cardsToMove = new List<Transform>();
         foreach(Transform card in centerCardView.transform){

@@ -25,12 +25,14 @@ public class BoardManager : MonoBehaviour
 
 
     public Vector3 playerDrawToPos;
+    public Vector3 enemyDrawToPos;
     void Start(){
         gm = gameObject.GetComponent<GameManager>();
         pm = gameObject.GetComponent<PlayerManager>();
         ui = gameObject.GetComponent<UIManager>();
 
         playerDrawToPos = new Vector3(3.75f, 1.7f, -3.5f);
+        enemyDrawToPos = new Vector3(3.75f, 3, 0);
     }
 
 }

@@ -10,7 +10,11 @@ public class TopCardVisual : MonoBehaviour
 
 
     public void UpdateCardVisual(Material _cardBack){
-        cardFace.material.SetTexture("_MainTex", ability.abilityImage.texture);
+        if(ability){
+            cardFace.material.SetTexture("_MainTex", ability.abilityImage.texture);
+        } else {
+            cardFace.material = _cardBack;
+        }
         cardBack.GetComponent<Renderer>().material = _cardBack;
     }
 }
