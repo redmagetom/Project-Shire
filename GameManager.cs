@@ -5,6 +5,7 @@ using System.Linq;
 
 public class GameManager : MonoBehaviour
 {
+    public bool actionInProgress;
     public enum Phase{PlayerTurn,EnemyTurn,UnitTurn,EndPhase}
     public Phase gamePhase;
     public int round;
@@ -12,6 +13,7 @@ public class GameManager : MonoBehaviour
     [Header("Player")]
 
     public int playerLevelUpBase = 2;
+    public int playerDrawNumber;
     public Material playerCardBack;
     public List<Hero> selectedPlayerHeroes;
     public List<HeroCard> playerHeroCards;
@@ -20,9 +22,13 @@ public class GameManager : MonoBehaviour
     public List<UnitCard> playerUnits = new List<UnitCard>(5);
     private int playerBaseMana;
     public int playerMana;
+    public int playerCardsPlayed;
+    public int playerHeroAbilitiesCast;
+    public int playerTotalCastCount;
     [Header("Enemy")]
 
     public int enemyLevelUpBase = 2;
+    public int enemyDrawNumber;
     public Material enemyCardBack;
     public List<Hero> selectedEnemyHeroes;
     public List<HeroCard> enemyHeroCards;
@@ -31,6 +37,9 @@ public class GameManager : MonoBehaviour
     public List<UnitCard> enemyUnits = new List<UnitCard>(5);
     private int enemyBaseMana;
     public int enemyMana;
+    public int enemyCardsPlayed;
+    public int enemyHeroAbilitiesCast;
+    public int enemyTotalCastCount;
     // ----- Private vars ------
     private BoardManager bm;
     private PlayerManager pm;
@@ -50,21 +59,16 @@ public class GameManager : MonoBehaviour
             yield return new WaitForEndOfFrame();
         }
         round = 1;
+        playerDrawNumber = 1;
+        enemyDrawNumber = 1;
 
         ChooseStarter();
         SetUpHeroes();
         SetUpDecks();
-        // first player to go gets 1 less card
+        //note: todo:  first player to go gets 1 less card
         StartCoroutine(DrawPlayerCards(4));
-        StartCoroutine(DrawEnemyCards(5));
+        StartCoroutine(DrawEnemyCards(4));
     }
-
-    public Ability testUnit;
-    // private void GiveTestUnits(){
-    //     for(var i = 0; i < 2; i++){
-    //         em.SummonUnit(testUnit);
-    //     }
-    // }
 
 
     private void ChooseStarter(){
@@ -80,11 +84,10 @@ public class GameManager : MonoBehaviour
         for(var i = 0; i < playerHeroes.Count; i++){
             var _heroCard = Instantiate(bm.heroCardPrefab) as HeroCard;
             _heroCard.ownership = HeroCard.Ownership.Player;
-
             Hero clone = new Hero();
             clone = Instantiate(playerHeroes[i]); 
             _heroCard.hero = clone;
-
+            
             _heroCard.InitializeHero();
             _heroCard.transform.SetParent(bm.playerHeroCards[i].transform);
             _heroCard.transform.localPosition = Vector3.zero;  
@@ -188,6 +191,7 @@ public class GameManager : MonoBehaviour
             foreach(Ability _card in hero.deck){
                 Ability cardClone = new Ability();
                 cardClone = _card;
+                cardClone.deckOwnership = hero;
                 playerDeck.Add(cardClone);
             }
         }
@@ -204,150 +208,36 @@ public class GameManager : MonoBehaviour
         enemyDeck.Shuffle();
     }
 
-    // public bool PlayerUseAbility(Ability ab, GameObject target){
-    //         var _hero = target.GetComponent<HeroCard>();
-    //         var _unit = target.GetComponent<UnitCard>();
 
-    //         HeroCard.Ownership _ownership;
-
-    //         if(_hero){
-    //             _ownership = _hero.ownership;
-    //         } else {
-    //             _ownership = _unit.ownership;
-    //         }
-
-    //         // -------------- targeting enemy --------------
-    //         if(ab.targetType == Ability.TargetType.Enemy){
-    //             if(_ownership == HeroCard.Ownership.Enemy){
-
-    //                 // targeting enemy with damage
-    //                 if(ab.abilityType == Ability.AbilityType.Damage){
-    //                     int totalDamage = 0;
-    //                     if(_hero){
-    //                         totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _hero.armor, 0); 
-    //                         if(totalDamage == 0){
-    //                             _hero.armor = Mathf.Max(_hero.armor - (ab.baseAmount + ab.modifier));
-    //                         } else {
-    //                             _hero.hp -= totalDamage;
-    //                         }
-                            
-    //                     } else {
-    //                         totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - _unit.hp, 0); 
-    //                         if(totalDamage == 0){
-    //                             int armorBeforeHit = _unit.armor;
-    //                             _unit.armor = Mathf.Max(_unit.armor - (ab.baseAmount + ab.modifier), 0);
-    //                             if(_unit.armor == 0){
-    //                                 _unit.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
-    //                             }
-    //                         } else {
-    //                             _unit.hp -= totalDamage;
-    //                         }
-    //                     }
-    //                     CheckForDeath(target);
-    //                 }
-
-    //             } else {
-    //                 Debug.Log("Target isn't an enemy");
-    //                 return false;
-    //             }
-    //         }
-
-    //         // --------- target is ally -------------
-    //         if(ab.targetType == Ability.TargetType.Ally){
-    //             if(_ownership == HeroCard.Ownership.Player){
-
-    //                 // buffs
-    //                 if(ab.abilityType == Ability.AbilityType.Alteration){
-    //                     // add armor
-    //                     if(ab.alterationType == Ability.AlterationType.Armor){
-    //                         int _amount = ab.baseAmount + ab.modifier;
-    //                         if(_hero){
-    //                             _hero.armor += _amount;
-    //                         } else {
-    //                             _unit.armor += _amount;
-    //                         }
-    //                     }
-
-    //                     if(ab.alterationType == Ability.AlterationType.HP){
-    //                         int _amount = ab.baseAmount + ab.modifier;
-    //                         if(_hero){
-    //                             _hero.hpMod += _amount;
-    //                             _hero.hp += _amount;
-    //                         } else {
-    //                             _unit.hpMod += _amount;
-    //                             _unit.hp += _amount;
-    //                         }
-    //                     }
-
-    //                     if(ab.alterationType == Ability.AlterationType.Damage){
-    //                         int _amount = ab.baseAmount + ab.modifier;
-    //                         if(_hero){
-    //                             Debug.Log("Target is not a unit");
-    //                             return false;
-    //                         } else {
-    //                             _unit.damage += _amount + ab.modifier;
-    //                         }
-    //                     }
-
-    //                 }
-
-    //                 // heal
-    //                 if(ab.abilityType == Ability.AbilityType.Heal){
-    //                     int _amount = ab.baseAmount + ab.modifier;
-    //                         if(_hero){
-    //                             if(_hero.hp >= _hero.hero.baseHP + _hero.hpMod){
-    //                                 Debug.Log("Hero at max HP");
-    //                                 return false;
-    //                             }
-    //                             _hero.hp = Mathf.Min(_hero.hp + _amount, _hero.hero.baseHP + _hero.hpMod);
-    //                         } else {
-    //                             if(_unit.hp >= _unit.unit.baseHP + _hero.hpMod){
-    //                                 Debug.Log("Unit at max HP");
-    //                                 return false;
-    //                             }
-    //                             _unit.hp = Mathf.Min(_unit.hp + _amount, _unit.unit.baseHP + _unit.hpMod);
-    //                         }
-    //                 }
-
-    //             } else {
-    //                 Debug.Log("Target isn't owned by you");
-    //                 return false;
-    //             }       
-    //         }
-
-
-    //         // add status effects if any
-    //         if(ab.statusEffect){
-    //             if(_unit){
-    //                 var _status = ScriptableObject.CreateInstance<StatusEffect>();
-    //                 _status.effectType = ab.statusEffect.effectType;
-    //                 _status.isBad = ab.statusEffect.isBad;
-    //                 _status.fadesAway = ab.statusEffect.fadesAway;
-    //                 _status.roundAdded = round;
-    //                 _unit.statusEffects.Add(_status);
-    //             }
-                
-    //         }
-            
-    //         if(ab.bonusEffect){
-    //             ab.bonusEffect.managers = gameObject;
-    //             ab.bonusEffect.DoTargetExtras(target);
-    //         }
-
-    //         playerMana -= ab.manaCost;
-    //         ui.CancelCast();
-    //         ui.UpdateManaDisplay();
-    //         return true;
-    //     }
-
+    public IEnumerator ShowCardPlayed(UI_DrawnCard card){
+        actionInProgress = true;
+        card.enemyCover.SetActive(false);
+        card.transform.SetParent(ui.canvas.transform);
+        LeanTween.moveLocal(card.gameObject, new Vector3(-800, 0, 0), 0.5f);
+        LeanTween.rotateLocal(card.gameObject, Vector3.zero, 0.5f);
+        LeanTween.scale(card.gameObject, new Vector3(2,2,2), 0.5f);
+        yield return new WaitForSeconds(2);
+        Destroy(card.gameObject);
+        yield return new WaitForSeconds(0.25f);
+        actionInProgress = false;
+    }
 
     public IEnumerator AbilityGoesOff(Ability ab, bool playerCast, GameObject target = null, GameObject selectedPosition = null){
 
+        if(playerCast){
+            playerMana -= ab.manaCost;
+            playerTotalCastCount += 1;
+        } else{
+            enemyMana -= ab.manaCost;
+            enemyTotalCastCount += 1;
+        }
+
+        yield return new WaitForSeconds(1);
         // todo: add in multi target stuff for all other ability types, not just damage
        
         // unit summoned
         if(ab.abilityType == Ability.AbilityType.Summon){
-            UnitSummoned(ab, playerCast, selectedPosition);
+            yield return StartCoroutine(UnitSummoned(ab, playerCast, selectedPosition));
         }
 
         // damage dealt
@@ -359,18 +249,18 @@ public class GameManager : MonoBehaviour
                 // cast from player
                 if(playerCast){
                     foreach(UnitCard unit in enemyUnits.FindAll(x => x != null)){
-                        DamageDealt(ab, unit.gameObject);
+                        DamageDealt(ab.baseAmount + ab.modifier, unit.gameObject);
                     }
                 // cast from enemy
                 } else {
                     foreach(UnitCard unit in playerUnits.FindAll(x => x !=null)){
-                        DamageDealt(ab, unit.gameObject);
+                        DamageDealt(ab.baseAmount + ab.modifier, unit.gameObject);
                     }
                 }
 
             // ability is single target damage type
             } else if(ab.targetType == Ability.TargetType.Enemy) {
-                DamageDealt(ab, target);
+                DamageDealt(ab.baseAmount + ab.modifier, target);
             }
             
         }
@@ -387,11 +277,6 @@ public class GameManager : MonoBehaviour
 
         StatusAndBonusEffects(ab, target);
 
-        if(playerCast){
-            playerMana -= ab.manaCost;
-        } else{
-            enemyMana -= ab.manaCost;
-        }
 
         if(playerCast){
             Debug.Log($"---- Player used {ab} --------");
@@ -404,11 +289,11 @@ public class GameManager : MonoBehaviour
     }
 
 
-    private void UnitSummoned(Ability ab, bool playerCast, GameObject selectedPosition = null){
+    private IEnumerator UnitSummoned(Ability ab, bool playerCast, GameObject selectedPosition = null){
            
         var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
-        
-        _unitCard.unit = ab.summonedUnit;
+        var _unitCopy = Instantiate(ab.summonedUnit);
+        _unitCard.unit = _unitCopy;
         _unitCard.unit.managers = gameObject;
 
 
@@ -434,41 +319,48 @@ public class GameManager : MonoBehaviour
        
         ui.UpdateManaDisplay();
 
+        _unitCard.roundPlayed = round;
+
         if(_unitCard.unit.cardEffect){
-            _unitCard.unit.cardEffect.managers = gameObject;
-            _unitCard.unit.cardEffect.attachedCard = _unitCard;
-            _unitCard.unit.cardEffect.DoSummonExtras();
+            var copy = CopyComponent(_unitCard.unit.cardEffect, _unitCard.gameObject);
+            copy.GetComponent<CardBonusEffects>().managers = gameObject;
+            copy.GetComponent<CardBonusEffects>().attachedCard = _unitCard;
+            copy.GetComponent<CardBonusEffects>().DoSummonExtras();
         }
+
+       
         _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
+        yield return null;
+
    
     }
-    private void DamageDealt(Ability ab, GameObject target){
+
+    private void DamageDealt(int damage, GameObject target){
         HeroCard heroCardTarget = target.GetComponent<HeroCard>();
         UnitCard unitCardTarget = target.GetComponent<UnitCard>();
-        if(ab.abilityType == Ability.AbilityType.Damage){
-            int totalDamage = 0;
+        
+
             if(heroCardTarget){
-                totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - heroCardTarget.armor, 0); 
-                if(totalDamage == 0){
-                    heroCardTarget.armor = Mathf.Max(heroCardTarget.armor - (ab.baseAmount + ab.modifier));
+                if(heroCardTarget.armor > damage){
+                    heroCardTarget.armor -= damage;
                 } else {
-                    heroCardTarget.hp -= totalDamage;
+                    int damageLeft = (damage - heroCardTarget.armor);
+                    heroCardTarget.armor = 0;
+                    heroCardTarget.hp -= damageLeft;
                 }
-                
             } else {
-                totalDamage = Mathf.Max((ab.baseAmount + ab.modifier) - unitCardTarget.hp, 0); 
-                if(totalDamage == 0){
-                    int armorBeforeHit = unitCardTarget.armor;
-                    unitCardTarget.armor = Mathf.Max(unitCardTarget.armor - (ab.baseAmount + ab.modifier), 0);
-                    if(unitCardTarget.armor == 0){
-                        unitCardTarget.hp -= ((ab.baseAmount + ab.modifier) - armorBeforeHit);
-                    }
+                if(unitCardTarget.armor > damage){
+                    unitCardTarget.armor -= damage;
                 } else {
-                    unitCardTarget.hp -= totalDamage;
+                    int damageLeft = (damage - unitCardTarget.armor);
+                    unitCardTarget.armor = 0;
+                    unitCardTarget.hp -= damageLeft;
                 }
             }
+
             CheckForDeath(target);
-        }
+
+        
     }
 
     private void BuffUsed(Ability ab, GameObject target){
@@ -477,12 +369,14 @@ public class GameManager : MonoBehaviour
             if(ab.abilityType == Ability.AbilityType.Alteration){
                 if(ab.alterationType == Ability.AlterationType.Armor){
                     if(unitCardTarget){
+                        unitCardTarget.maxArmor += ab.baseAmount;
                         unitCardTarget.armor += ab.baseAmount;
                     } else {
                         heroCardTarget.armor += ab.baseAmount;
                     }
                 } else if(ab.alterationType == Ability.AlterationType.HP){
                     if(unitCardTarget){
+                        unitCardTarget.maxHp += ab.baseAmount;
                         unitCardTarget.hp += ab.baseAmount;
                     } else {
                         heroCardTarget.hp += ab.baseAmount;
@@ -490,6 +384,7 @@ public class GameManager : MonoBehaviour
                 } else if(ab.alterationType == Ability.AlterationType.Damage){
                     if(unitCardTarget){
                         unitCardTarget.damage += ab.baseAmount;
+                        unitCardTarget.maxDamage += ab.baseAmount;
                         //note: do I add a damage modifier for abilities for heroes?
                     }
                 }
@@ -502,9 +397,9 @@ public class GameManager : MonoBehaviour
         if(ab.abilityType == Ability.AbilityType.Heal){
             int _amount = ab.baseAmount + ab.modifier;
             if(heroCardTarget){
-                heroCardTarget.hp = Mathf.Min(heroCardTarget.hp + _amount, heroCardTarget.hero.baseHP + heroCardTarget.hpMod);
+                heroCardTarget.hp = Mathf.Min(heroCardTarget.hp + _amount, heroCardTarget.hero.baseHP);
             } else {
-                unitCardTarget.hp = Mathf.Min(unitCardTarget.hp + _amount, unitCardTarget.unit.baseHP + unitCardTarget.hpMod);
+                unitCardTarget.hp = Mathf.Min(unitCardTarget.hp + _amount, unitCardTarget.maxHp);
             }
         }
     }
@@ -515,12 +410,7 @@ public class GameManager : MonoBehaviour
             UnitCard unitCardTarget = target.GetComponent<UnitCard>();
             if(ab.statusEffect){         
                 if(unitCardTarget){
-                    var _status = ScriptableObject.CreateInstance<StatusEffect>();
-                    _status.effectType = ab.statusEffect.effectType;
-                    _status.isBad = ab.statusEffect.isBad;
-                    _status.fadesAway = ab.statusEffect.fadesAway;
-                    _status.roundAdded = round;
-                    unitCardTarget.statusEffects.Add(_status);
+                    ApplyStatusEffect(ab.statusEffect, ab.statusEffect.effectLength, unitCardTarget);
                 }       
             }
         }
@@ -530,8 +420,28 @@ public class GameManager : MonoBehaviour
             ab.bonusEffect.managers = gameObject;
             ab.bonusEffect.DoTargetExtras(target);
         }
+
+
+        // have all units check for the board for their board effects
+        foreach(Transform unitCard in bm.activeUnitCardHolder.transform){
+            if(unitCard.GetComponent<CardBonusEffects>()){
+                unitCard.GetComponent<CardBonusEffects>().BoardCheckExtras();
+            }
+        }
+
+
     }
     
+    private void ApplyStatusEffect(StatusEffect effect, int length, UnitCard unitCardTarget){
+        var _status = ScriptableObject.CreateInstance<StatusEffect>();
+        _status.name = effect.ToString();
+        _status.effectType = effect.effectType;
+        _status.isBad = effect.isBad;
+        _status.fadesAway = effect.fadesAway;
+        _status.roundAdded = round;
+        unitCardTarget.statusEffects.Add(_status);
+    }
+
     public void CheckForDeath(GameObject target){
         var _hero = target.GetComponent<HeroCard>();
         var _unit = target.GetComponent<UnitCard>();
@@ -546,13 +456,32 @@ public class GameManager : MonoBehaviour
         if(_hpValue <= 0){
             Debug.Log($"{target.name} died");
             // remove if unit
+
+            bool skipDeath = false;
+            if(target.GetComponent<CardBonusEffects>()){
+                skipDeath = target.GetComponent<CardBonusEffects>().preventDeath;
+            }
+
             if(target.GetComponent<UnitCard>()){
-                Destroy(target.gameObject);
+                if(target.GetComponent<CardBonusEffects>()){
+                    target.GetComponent<CardBonusEffects>().DoDeathExtras();
+                }
+
+                if(!skipDeath){
+                    Destroy(target.gameObject);
+                }
+                
             // otherwise do animation thing
             } else {
 
             }
             
+        }
+
+        foreach(Transform unitCard in bm.activeUnitCardHolder.transform){
+            if(unitCard.GetComponent<CardBonusEffects>()){
+                unitCard.GetComponent<CardBonusEffects>().BoardCheckExtras();
+            }
         }
     }
 
@@ -565,6 +494,17 @@ public class GameManager : MonoBehaviour
                 if(pu.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen)){
                     continue;
                 }
+
+
+                // does aoe damage to all
+                if(pu.unit.targetType == Unit.TargetType.All){
+                    pu.attackedThisTurn = true;
+                    yield return StartCoroutine(UnitAttacksAll(pu));
+                    yield return new WaitForEndOfFrame();
+                    continue;
+                }
+
+
                 foreach(UnitCard eu in enemyUnits){
                     if(eu){
                         // there's a unit to attack down the line, left to right
@@ -592,6 +532,15 @@ public class GameManager : MonoBehaviour
                 if(eu.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen)){
                     continue;
                 }
+
+                // does aoe damage to all
+                if(eu.unit.targetType == Unit.TargetType.All){
+                    eu.attackedThisTurn = true;
+                    yield return StartCoroutine(UnitAttacksAll(eu));
+                    yield return new WaitForEndOfFrame();
+                    continue;
+                }
+
                 foreach(UnitCard pu in playerUnits){
                     // there's a unit to attack down the line, left to right
                     if(pu){
@@ -618,6 +567,34 @@ public class GameManager : MonoBehaviour
         //todo: check for win or draw condition
     }
 
+    //todo: redo all damage, armor, hp to include mods
+    private IEnumerator UnitAttacksAll(UnitCard attacker){
+        List<UnitCard> targets = new List<UnitCard>();
+        if(attacker.ownership == HeroCard.Ownership.Player){
+            targets = enemyUnits;
+        } else {
+            targets = playerUnits;
+        }
+
+        Vector3 attackerPos = attacker.transform.position;
+        Vector3 aRisePos = attackerPos;
+        aRisePos.y += 0.75f;
+        LeanTween.move(attacker.gameObject, aRisePos, 0.5f).setEaseInExpo();
+        LeanTween.scale(attacker.gameObject, new Vector3(1.4f, 1.4f, 1.4f), 0.5f).setEaseInBack();
+        // do animation here
+        yield return new WaitForSeconds(0.75f);
+        LeanTween.move(attacker.gameObject, attackerPos, 0.25f);
+        LeanTween.scale(attacker.gameObject, new Vector3(1,1,1), 0.25f);
+        yield return new WaitForSeconds(0.5f);
+
+        foreach(UnitCard uc in targets){
+            if(!uc){continue;}
+            DamageDealt(attacker.damage, uc.gameObject);
+        }
+    }
+
+
+  
     private IEnumerator UnitAttacksHero(UnitCard attacker, HeroCard defender){
         Vector3 attackerPos = attacker.transform.position;
         Vector3 defenderPos = defender.transform.position;
@@ -641,8 +618,8 @@ public class GameManager : MonoBehaviour
         } else {
             defender.armor -= attacker.damage;
         }
-
     }
+
 
     private IEnumerator UnitAttacksUnit(UnitCard attacker, UnitCard defender){
         //todo: make sure this works
@@ -674,13 +651,37 @@ public class GameManager : MonoBehaviour
             defender.armor -= attacker.damage;
         }
 
+        // if the defender is still alive, 
+        if(defender.gameObject){
+            // do effects if exsit
+            if(attacker.unit.cardEffect){
+                attacker.unit.cardEffect.DoTargetExtras(defender.gameObject);
+            }
+            
+            // apply default on hit effects
+            var _onHitEffects = attacker.unit.onHitStatuses;
 
-        // the defender does damage to the attacker if attacker not ranged or effected by a status that prohibits it
+            for(var i = 0; i < _onHitEffects.status.Count; i++){
+                if(defender.statusEffects.FirstOrDefault(x => x.effectType == _onHitEffects.status[i].effectType)){
+                    defender.statusEffects.FirstOrDefault(x => x.effectType == _onHitEffects.status[i].effectType).effectLength += _onHitEffects.length[i];
+                } else {
+                    ApplyStatusEffect(_onHitEffects.status[i], _onHitEffects.length[i], defender.GetComponent<UnitCard>());
+                }
+            }
+    
+            
+
+        }
+
+        // apply default on hit status effects
+            
+
+        // the defender does damage to the attacker if attacker not ranged or effected by a status that prohibits it, etc
         if(
             !attacker.unit.ranged 
-            || attacker.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen))
-        
-        {
+            || attacker.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen)
+            || defender.unit.targetType != Unit.TargetType.Single
+        ) {
             if(defender.damage > attacker.armor){
                 defenderDamageUsed += attacker.armor;
                 attacker.armor = 0;
@@ -688,6 +689,29 @@ public class GameManager : MonoBehaviour
                 CheckForDeath(attacker.gameObject);
             } else {
                 attacker.armor -= defender.damage;
+            }
+
+
+
+            // if the attacer still alive, do effects
+            if(attacker.gameObject){
+            // do effects if exsit
+                if(defender.unit.cardEffect){
+                    defender.unit.cardEffect.DoTargetExtras(attacker.gameObject);
+                }
+            
+            // apply default on hit effects
+                var _onHitEffects = defender.unit.onHitStatuses;
+
+                for(var i = 0; i < _onHitEffects.status.Count; i++){
+                    if(attacker.statusEffects.FirstOrDefault(x => x.effectType == _onHitEffects.status[i].effectType)){
+                        attacker.statusEffects.FirstOrDefault(x => x.effectType == _onHitEffects.status[i].effectType).effectLength += _onHitEffects.length[i];
+                    } else {
+                        ApplyStatusEffect(_onHitEffects.status[i], _onHitEffects.length[i], attacker.GetComponent<UnitCard>());
+                    }
+                }
+         
+
             }
         }
 
@@ -762,10 +786,10 @@ public class GameManager : MonoBehaviour
     public void ProcessEndTurn(){
         ChangeTurn();
         if(gamePhase == Phase.PlayerTurn){
-            StartCoroutine(DrawPlayerCards(1));
+            StartCoroutine(DrawPlayerCards(playerDrawNumber));
         }
         if(gamePhase == Phase.EnemyTurn){
-            StartCoroutine(DrawEnemyCards(1));
+            StartCoroutine(DrawEnemyCards(enemyDrawNumber));
         }
 
         if(gamePhase == Phase.EndPhase){
@@ -777,36 +801,63 @@ public class GameManager : MonoBehaviour
 
     public IEnumerator ProcessEndPhase(){
         yield return StartCoroutine(HandleStatusEffects());
+
+        playerCardsPlayed = 0;
+        playerHeroAbilitiesCast = 0;
+
+        enemyCardsPlayed = 0;
+        enemyHeroAbilitiesCast = 0;
+        
     }
 
     private IEnumerator HandleStatusEffects(){
         List<UnitCard> allActiveUnits = new List<UnitCard>();
         allActiveUnits = allActiveUnits.Concat(enemyUnits).Concat(playerUnits).ToList();
 
+
         foreach(UnitCard unitCard in allActiveUnits){
+            
             if(!unitCard){continue;}
+            // Debug.Log(unitCard);
             // Debug.Log($"Checking status effects for {unitCard}");
 
             // remove the status if expired
             foreach(StatusEffect status in unitCard.statusEffects){
-                if(round - status.roundAdded > status.effectLength && status.fadesAway){
-                    unitCard.statusEffects.Remove(status);
-                    continue;
-                }
+             
 
-                // do all the status effect things
+                // do all the status effect things todo: finish programmign what status effects do
                 if(status.effectType == StatusEffect.EffectType.Burning){
                     unitCard.hp = Mathf.Max(unitCard.hp - 1, 0);
                     unitCard.armor = Mathf.Max(unitCard.armor - 1, 0);
                 }
 
+                if(round - status.roundAdded > status.effectLength && status.fadesAway){
+                    unitCard.statusEffects.Remove(status);
+                }
 
                 CheckForDeath(unitCard.gameObject);
-
             }
+
+            if(unitCard.GetComponent<CardBonusEffects>()){
+                unitCard.GetComponent<CardBonusEffects>().DoTurnChangeExtras();
+            }
+            
         }
 
         yield return null;
+    }
+
+
+
+    Component CopyComponent(Component original, GameObject destination){
+        System.Type type = original.GetType();
+        Component copy = destination.AddComponent(type);
+        // Copied fields can be restricted with BindingFlags
+        System.Reflection.FieldInfo[] fields = type.GetFields(); 
+        foreach (System.Reflection.FieldInfo field in fields) {
+            field.SetValue(copy, field.GetValue(original));
+            }
+        return copy;
     }
     
 }

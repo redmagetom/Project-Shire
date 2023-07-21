@@ -32,6 +32,11 @@ public class EnemyManager : MonoBehaviour
         ResetTurnThings();
 
         while(turnOngoing){
+            yield return new WaitForSeconds(0.1f);
+            if(gm.actionInProgress){
+                yield return new WaitForSeconds(0.1f);
+                continue;
+            }
             RefreshAvailable();
             GetOwnUnitValues();
 
@@ -42,12 +47,14 @@ public class EnemyManager : MonoBehaviour
             ui.UpdateManaDisplay();
        
             if(ShouldLevelUpHero() && abilityUnlockPossible){
+                yield return new WaitForSeconds(0.1f);
                 continue;
             }
             
             int mostDirectDamage = MostDirectDamage();
             
             if(ShouldDirectDamageUnit()){
+                yield return new WaitForSeconds(0.1f);
                 continue;
             }
 
@@ -55,6 +62,7 @@ public class EnemyManager : MonoBehaviour
             if(!CheckForDebuffRemoval()){
                 // if there's nothing to dispel, choose the best action by value
                 ChooseActionWithHighestValue(true);
+                yield return new WaitForSeconds(0.1f);
             }
 
         }
@@ -136,6 +144,7 @@ public class EnemyManager : MonoBehaviour
         if(chosenUnlock){
             Debug.Log($"Chose to unlock {chosenUnlock}");
             var unlock = chosenHero.hero.abilities.Find(x => x == chosenUnlock);
+            chosenHero.levelUpEffect.Play();
             chosenHero.level += 1;
             chosenUnlock.locked = false;
             gm.enemyMana -= gm.enemyLevelUpBase + chosenUnlock.barPosition;
@@ -196,7 +205,7 @@ public class EnemyManager : MonoBehaviour
         if(target){
             UnitCard _uc = target.GetComponent<UnitCard>();
             if(_uc){
-                damageNeeded = _uc.armor + (_uc.hp + _uc.hpMod);
+                damageNeeded = _uc.armor + _uc.hp;
             } else {
                 damageNeeded = target.GetComponent<HeroCard>().hp;
             }
@@ -445,7 +454,7 @@ public class EnemyManager : MonoBehaviour
             if(ab.abilityType == Ability.AbilityType.Heal){
                 foreach(UnitCard unitCard in gm.enemyUnits){
                     if(!unitCard){continue;}
-                    if(unitCard.hp < unitCard.unit.baseHP + unitCard.hpMod){
+                    if(unitCard.hp < unitCard.maxHp){
                         float unitHealValue = (unitCard.unit.baseHP - unitCard.hp);
                         if(unitHealValue > maxHealValue){
                             chosenTarget = unitCard.gameObject;
@@ -947,6 +956,7 @@ public class EnemyManager : MonoBehaviour
     }
 
     private void EnemyHeroUsesAbility(HeroCard card, Ability ab, GameObject target = null){
+        gm.enemyHeroAbilitiesCast += 1;
         // gm.enemyMana -= ab.manaCost;
         ab.usedThisRound = true;
         StartCoroutine(gm.AbilityGoesOff(ab, false, target));
@@ -955,11 +965,12 @@ public class EnemyManager : MonoBehaviour
     }
 
     private void EnemyPlaysCard(int cardPos, GameObject target = null){
+        gm.enemyCardsPlayed += 1;
         Ability ab = gm.enemyDrawnCards[cardPos];
         StartCoroutine(gm.AbilityGoesOff(ab, false, target));
         // gm.enemyMana -= ab.manaCost;
         gm.enemyDrawnCards.RemoveAt(cardPos);
-        Destroy(ui.enemyDrawnCardHolder.transform.GetChild(cardPos).gameObject);
+        StartCoroutine(gm.ShowCardPlayed(ui.enemyDrawnCardHolder.transform.GetChild(cardPos).GetComponent<UI_DrawnCard>()));
 
         foreach(Transform _card in ui.enemyDrawnCardHolder.transform){
             if(_card.gameObject){

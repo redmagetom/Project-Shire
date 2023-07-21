@@ -192,6 +192,7 @@ public class UIManager : MonoBehaviour
     public void ShowEnemyCardDraw(Ability card){
         var _newCard = Instantiate(drawnCardPrefab as UI_DrawnCard);
         _newCard.ability = card;
+        _newCard.cardBack = gm.enemyCardBack;
         _newCard.enemyCover.SetActive(true);
         _newCard.SetUpCard();
         StartCoroutine(MoveEnemyCardToHand(_newCard));

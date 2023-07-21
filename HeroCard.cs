@@ -21,6 +21,8 @@ public class HeroCard : MonoBehaviour
     public int hp;
     public int hpMod;
     public int armor;
+    [Header("Effects")]
+    public ParticleSystem levelUpEffect;
 
     void Update(){
         // is this too expensive?
@@ -47,7 +49,7 @@ public class HeroCard : MonoBehaviour
                 abClone.locked = false;
             }
         }
-
+        
         hero.abilities = abilities;
         level = 1;
         hp = hero.baseHP;

@@ -7,6 +7,7 @@ public class CardBonusEffects : MonoBehaviour
     public UnitCard attachedCard;
     public GameObject managers;
     public float effectValue = 1f;
+    public bool preventDeath = false;
     [TextArea]
     public string effectDescription;
     public virtual void DoTargetExtras(GameObject target = null){
@@ -17,7 +18,15 @@ public class CardBonusEffects : MonoBehaviour
 
     }
 
-    public virtual void DoTurnChangeExtras(){
+    public virtual void DoTurnChangeExtras(GameObject target = null){
+
+    }
+
+    public virtual void DoDeathExtras(GameObject target = null){
+
+    }
+
+    public virtual void BoardCheckExtras(){
 
     }
 }

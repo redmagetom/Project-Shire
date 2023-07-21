@@ -78,9 +78,13 @@ public class PlayerManager : MonoBehaviour
                             StartCoroutine(gm.AbilityGoesOff(readiedAbility, true, null, clicked.transform.gameObject));
                             ui.CancelCast();
                             if(selectedCard){
-                                gm.playerDrawnCards[selectedCard.transform.GetSiblingIndex()] = null;
-                                Destroy(selectedCard.gameObject);
+                                int cardIdx = selectedCard.transform.GetSiblingIndex();
+                                gm.playerDrawnCards[cardIdx] = null;
+                                StartCoroutine(gm.ShowCardPlayed(ui.playerDrawnCardsHolder.transform.GetChild(cardIdx).GetComponent<UI_DrawnCard>()));
                                 selectedCard = null;
+                                gm.playerCardsPlayed += 1;
+                            } else {
+                                gm.playerHeroAbilitiesCast += 1;
                             }
                         }
 
@@ -94,9 +98,13 @@ public class PlayerManager : MonoBehaviour
 
                         // if the source was from a card, get rid of that card
                         if(selectedCard){
-                            gm.playerDrawnCards[selectedCard.transform.GetSiblingIndex()] = null;
-                            Destroy(selectedCard.gameObject);
+                            int cardIdx = selectedCard.transform.GetSiblingIndex();
+                            gm.playerDrawnCards[cardIdx] = null;
+                            StartCoroutine(gm.ShowCardPlayed(ui.playerDrawnCardsHolder.transform.GetChild(cardIdx).GetComponent<UI_DrawnCard>()));
                             selectedCard = null;
+                            gm.playerCardsPlayed += 1;
+                        } else {
+                            gm.playerHeroAbilitiesCast += 1;
                         }
                     }
            
