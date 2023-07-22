@@ -115,7 +115,7 @@ public class UIManager : MonoBehaviour
     private void ReadyAbilityForCasting(Ability _ab){
 
         if(gm.gamePhase != GameManager.Phase.PlayerTurn){return;}
-        pm.readiedAbility = _ab;
+        
         if(_ab.category == Ability.Category.HeroAbility){
             pm.selectedCard = null;
         }
@@ -128,14 +128,23 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        castingBar.SetActive(true);
-        castingBarImage.sprite = _ab.abilityImage;
-        castingBarText.text = $"Casting {_ab.abilityName}";
         MoveCardsFromCenterToHand();
 
         if(_ab.abilityType == Ability.AbilityType.Summon){
-            ShowPlayerUnitPlacements();            
+            StartCoroutine(gm.AbilityGoesOff(_ab, true, null, pm.selectedCard));
+            return;
         }
+
+        pm.readiedAbility = _ab;
+        
+        castingBar.SetActive(true);
+        castingBarImage.sprite = _ab.abilityImage;
+        castingBarText.text = $"Casting {_ab.abilityName}";
+        
+
+        // if(_ab.abilityType == Ability.AbilityType.Summon){
+        //     ShowPlayerUnitPlacements();            
+        // }
 
     }
 
@@ -162,7 +171,7 @@ public class UIManager : MonoBehaviour
     public void CancelCast(){
         pm.readiedAbility = null;
         castingBar.SetActive(false);
-        HidePlayerUnitPlacements();
+        // HidePlayerUnitPlacements();
     }
 
     public void UpdateManaDisplay(){

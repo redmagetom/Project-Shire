@@ -6,10 +6,13 @@ using System.Linq;
 public class GameManager : MonoBehaviour
 {
     public bool actionInProgress;
-    public enum Phase{PlayerTurn,EnemyTurn,UnitTurn,EndPhase}
+    public enum Phase{PlayerTurn,EnemyTurn,Strategy,UnitTurn,EndPhase}
     public Phase gamePhase;
     public int round;
     private Phase firstPhase;
+
+    public bool playerStrategyDone;
+    public bool enemyStrategyDone;
     [Header("Player")]
 
     public int playerLevelUpBase = 2;
@@ -74,6 +77,7 @@ public class GameManager : MonoBehaviour
     private void ChooseStarter(){
         // todo: make random later
         gamePhase = Phase.PlayerTurn;
+        // gamePhase = Phase.Strategy;
         firstPhase = gamePhase;
         ui.phaseText.text = gamePhase.ToString();
     }
@@ -218,11 +222,11 @@ public class GameManager : MonoBehaviour
         LeanTween.scale(card.gameObject, new Vector3(2,2,2), 0.5f);
         yield return new WaitForSeconds(2);
         Destroy(card.gameObject);
-        yield return new WaitForSeconds(0.25f);
+        // yield return new WaitForSeconds(0.25f);
         actionInProgress = false;
     }
 
-    public IEnumerator AbilityGoesOff(Ability ab, bool playerCast, GameObject target = null, GameObject selectedPosition = null){
+    public IEnumerator AbilityGoesOff(Ability ab, bool playerCast, GameObject target = null, UI_DrawnCard card = null){
 
         if(playerCast){
             playerMana -= ab.manaCost;
@@ -232,12 +236,14 @@ public class GameManager : MonoBehaviour
             enemyTotalCastCount += 1;
         }
 
-        yield return new WaitForSeconds(1);
+        if(card){
+            yield return StartCoroutine(ShowCardPlayed(card));
+        }
         // todo: add in multi target stuff for all other ability types, not just damage
        
         // unit summoned
         if(ab.abilityType == Ability.AbilityType.Summon){
-            yield return StartCoroutine(UnitSummoned(ab, playerCast, selectedPosition));
+            yield return StartCoroutine(UnitSummoned(ab, playerCast));
         }
 
         // damage dealt
@@ -288,32 +294,76 @@ public class GameManager : MonoBehaviour
         yield return null;
     }
 
-
-    private IEnumerator UnitSummoned(Ability ab, bool playerCast, GameObject selectedPosition = null){
+ 
+    private IEnumerator UnitSummoned(Ability ab, bool playerCast){
            
         var _unitCard = Instantiate(bm.unitCardPrefab as UnitCard);
         var _unitCopy = Instantiate(ab.summonedUnit);
         _unitCard.unit = _unitCopy;
         _unitCard.unit.managers = gameObject;
 
+      _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
 
         if(playerCast){
             _unitCard.ownership = HeroCard.Ownership.Player;
             _unitCard.SetUpUnit();
-            var overPos = selectedPosition.transform.position;
-            var downPos = selectedPosition.transform.position;
+
+            var overPos = bm.playerUnitsCenter.transform.position;
+            var downPos = overPos;
+
+            // var overPos = selectedPosition.transform.position;
+
+            // note: base x spacing is 1f
+            overPos.x += (playerUnits.Count * 1f);
+
+            
             overPos.y += 1;
             downPos.y = 0.01f;
             _unitCard.transform.position = overPos;    
             LeanTween.move(_unitCard.gameObject, downPos, 0.25f);
-            var posIndex = selectedPosition.transform.GetSiblingIndex();
-            playerUnits[posIndex] = _unitCard;
-            _unitCard.name = $"Player's {_unitCard.unit.unitName} (Position: {posIndex})";
+            yield return new WaitForSeconds(0.25f);
+           
+            // var posIndex = selectedPosition.transform.GetSiblingIndex();
+            // playerUnits[posIndex] = _unitCard;
+            playerUnits.Add(_unitCard);
+            _unitCard.boardPos = playerUnits.Count-1;
+            _unitCard.name = $"Player's {_unitCard.unit.unitName} (Position: {_unitCard.boardPos})";
+           
+            
+            yield return new WaitForEndOfFrame();
+            // if(playerUnits.Count > 1){
+                yield return StartCoroutine(SpaceOutUnits(playerUnits));
+            // }
+ 
 
         } else {
+            var overPos = bm.enemyUnitsCenter.transform.position;
+            var downPos = overPos;
+
+            // var overPos = selectedPosition.transform.position;
+
+            // note: base x spacing is 1f
+            overPos.x += (enemyUnits.Count * 1f);
+
+            
+            overPos.y += 1;
+            downPos.y = 0.01f;
+            _unitCard.transform.position = overPos;   
             _unitCard.ownership = HeroCard.Ownership.Enemy;
             _unitCard.SetUpUnit();
-            em.ChooseSummonPosition(_unitCard);       
+            enemyUnits.Add(_unitCard);
+            _unitCard.boardPos = enemyUnits.Count-1;
+            _unitCard.name = $"Enemy's {_unitCard.unit.unitName} (Position: {_unitCard.boardPos})";
+            LeanTween.move(_unitCard.gameObject, downPos, 0.25f);
+            yield return new WaitForSeconds(0.25f);
+
+            
+            
+            
+            yield return StartCoroutine(SpaceOutUnits(enemyUnits));
+            
+            //todo: redo summon position so that it rearranges on the tactics phase
+            // em.ChooseSummonPosition(_unitCard);       
         }
 
        
@@ -329,11 +379,74 @@ public class GameManager : MonoBehaviour
         }
 
        
-        _unitCard.transform.SetParent(bm.activeUnitCardHolder.transform);
+        
         yield return null;
 
    
     }
+
+    public IEnumerator SpaceOutUnits(List<UnitCard> unitList){
+        float posModifier = 1f;
+        float rightBuffer = 0;
+        float leftBuffer = 0;
+        float _posY = bm.playerUnitsCenter.transform.localPosition.y;
+        float _posZ = 0;
+
+        if(unitList[0].ownership == HeroCard.Ownership.Enemy){
+            posModifier = 1.1f;
+            _posZ = bm.enemyUnitsCenter.transform.localPosition.z;
+        } else {
+            _posZ = bm.playerUnitsCenter.transform.localPosition.z;
+        }
+
+        if(unitList.Count % 2 == 0){
+            leftBuffer = (unitList.Count / 2) -1;
+            rightBuffer = (unitList.Count/2);
+            foreach(var _card in unitList){
+
+                var movePos = _card.transform.localPosition;
+                movePos.y = _posY;
+                movePos.z = _posZ;
+
+                if(_card.boardPos == leftBuffer){
+                    movePos.x = -(posModifier/2);
+                }
+
+                if(_card.boardPos == rightBuffer){
+                    movePos.x = (posModifier/2);
+                }
+
+                
+                if(_card.boardPos < leftBuffer){
+                    movePos.x = -((leftBuffer -_card.boardPos) + (posModifier/2));
+                    
+                } else if(_card.boardPos > rightBuffer){
+                    movePos.x = ((_card.boardPos - rightBuffer) + (posModifier/2));
+                }
+            
+                LeanTween.moveLocal(_card.gameObject, movePos, 0.2f);
+            }
+
+        } else {
+            leftBuffer = (unitList.Count/2);
+            foreach(var _card in unitList){
+
+                var movePos = _card.transform.localPosition;
+                movePos.y = _posY;
+                movePos.z = _posZ;
+
+                if(_card.boardPos == leftBuffer){
+                    movePos.x = 0;
+                } else {
+                    movePos.x = (_card.boardPos - leftBuffer) * posModifier;
+                }
+                LeanTween.moveLocal(_card.gameObject, movePos, 0.2f);
+            }
+        }
+        yield return null;
+    }
+
+
 
     private void DamageDealt(int damage, GameObject target){
         HeroCard heroCardTarget = target.GetComponent<HeroCard>();
@@ -358,7 +471,7 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            CheckForDeath(target);
+            StartCoroutine(CheckForDeath(target));
 
         
     }
@@ -442,7 +555,8 @@ public class GameManager : MonoBehaviour
         unitCardTarget.statusEffects.Add(_status);
     }
 
-    public void CheckForDeath(GameObject target){
+    // todo: fix rearranging on death
+    public IEnumerator CheckForDeath(GameObject target){
         var _hero = target.GetComponent<HeroCard>();
         var _unit = target.GetComponent<UnitCard>();
         int _hpValue = 99;
@@ -462,13 +576,39 @@ public class GameManager : MonoBehaviour
                 skipDeath = target.GetComponent<CardBonusEffects>().preventDeath;
             }
 
-            if(target.GetComponent<UnitCard>()){
+            if(_unit){
                 if(target.GetComponent<CardBonusEffects>()){
                     target.GetComponent<CardBonusEffects>().DoDeathExtras();
                 }
 
                 if(!skipDeath){
+                    if(_unit.ownership == HeroCard.Ownership.Player){
+                        playerUnits.RemoveAt(_unit.boardPos);
+                        foreach(var u in playerUnits){
+                            if(u.boardPos > _unit.boardPos){
+                                u.boardPos -= 1;
+                            }
+                        }
+                        yield return new WaitForSeconds(0.01f);
+                        if(playerUnits.Count > 0){
+                            yield return StartCoroutine(SpaceOutUnits(playerUnits));
+                        }
+                        
+                    } else {
+                        enemyUnits.RemoveAt(_unit.boardPos);
+                        foreach(var u in enemyUnits){
+                            if(u.boardPos > _unit.boardPos){
+                                u.boardPos -= 1;
+                            }
+                        }
+                        yield return new WaitForSeconds(0.01f);
+                        if(enemyUnits.Count > 0){
+                            yield return StartCoroutine(SpaceOutUnits(enemyUnits));
+                        }
+                        
+                    }
                     Destroy(target.gameObject);
+                    yield return new WaitForSeconds(0.1f);
                 }
                 
             // otherwise do animation thing
@@ -483,12 +623,14 @@ public class GameManager : MonoBehaviour
                 unitCard.GetComponent<CardBonusEffects>().BoardCheckExtras();
             }
         }
+
+        yield return null;
     }
 
 
     private IEnumerator UnitsTakeTurns(){
     
-        foreach(UnitCard pu in playerUnits){
+        foreach(UnitCard pu in playerUnits.ToList()){
             if(pu && !pu.attackedThisTurn){
                 // check for status effects 
                 if(pu.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen)){
@@ -505,7 +647,7 @@ public class GameManager : MonoBehaviour
                 }
 
 
-                foreach(UnitCard eu in enemyUnits){
+                foreach(UnitCard eu in enemyUnits.ToList()){
                     if(eu){
                         // there's a unit to attack down the line, left to right
                         pu.attackedThisTurn = true;
@@ -516,7 +658,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 // attack hero instead
-                foreach(HeroCard eh in enemyHeroCards){
+                foreach(HeroCard eh in enemyHeroCards.ToList()){
                     if(pu && eh && eh.hp > 0 && !pu.attackedThisTurn){
                         pu.attackedThisTurn = true;
                         yield return StartCoroutine(UnitAttacksHero(pu, eh));
@@ -527,7 +669,7 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForEndOfFrame();
 
-        foreach(UnitCard eu in enemyUnits){
+        foreach(UnitCard eu in enemyUnits.ToList()){
             if(eu && !eu.attackedThisTurn){
                 if(eu.statusEffects.Find(x => x.effectType == StatusEffect.EffectType.Frozen)){
                     continue;
@@ -541,7 +683,7 @@ public class GameManager : MonoBehaviour
                     continue;
                 }
 
-                foreach(UnitCard pu in playerUnits){
+                foreach(UnitCard pu in playerUnits.ToList()){
                     // there's a unit to attack down the line, left to right
                     if(pu){
                         eu.attackedThisTurn = true;
@@ -552,7 +694,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 // attack hero instaed
-                foreach(HeroCard ph in playerHeroCards){
+                foreach(HeroCard ph in playerHeroCards.ToList()){
                     if(eu && ph && ph.hp > 0 && !eu.attackedThisTurn){
                         eu.attackedThisTurn = true;
                         yield return StartCoroutine(UnitAttacksHero(eu, ph));
@@ -646,7 +788,7 @@ public class GameManager : MonoBehaviour
             attackerDamageUsed += defender.armor;
             defender.armor = 0;
             defender.hp -= (attacker.damage - attackerDamageUsed);
-            CheckForDeath(defender.gameObject);
+            // yield return StartCoroutine(CheckForDeath(defender.gameObject));
         } else {
             defender.armor -= attacker.damage;
         }
@@ -686,7 +828,7 @@ public class GameManager : MonoBehaviour
                 defenderDamageUsed += attacker.armor;
                 attacker.armor = 0;
                 attacker.hp -= (defender.damage - defenderDamageUsed);
-                CheckForDeath(attacker.gameObject);
+                // yield return StartCoroutine(CheckForDeath(attacker.gameObject));
             } else {
                 attacker.armor -= defender.damage;
             }
@@ -715,6 +857,10 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        yield return CheckForDeath(attacker.gameObject);
+        yield return CheckForDeath(defender.gameObject);
+        // has to be longer than a rearraning units
+        yield return new WaitForSeconds(0.3f);
 
     }
 
@@ -750,11 +896,11 @@ public class GameManager : MonoBehaviour
         if(gamePhase == Phase.PlayerTurn){
             playerWent = true;
             if(enemyWent){
-                gamePhase = Phase.UnitTurn;
-                StartCoroutine(UnitsTakeTurns());
+                gamePhase = Phase.Strategy;
+                // gamePhase = Phase.UnitTurn;
+                // StartCoroutine(UnitsTakeTurns());
             } else {
                 gamePhase = Phase.EnemyTurn;
-                
                 StartCoroutine(em.EnemyTakesTurn());
             }
             return;
@@ -763,13 +909,18 @@ public class GameManager : MonoBehaviour
         if(gamePhase == Phase.EnemyTurn){
             enemyWent = true;
             if(playerWent){
-                gamePhase = Phase.UnitTurn;
-                StartCoroutine(UnitsTakeTurns());
+                gamePhase = Phase.Strategy;
             } else {
                 gamePhase = Phase.PlayerTurn;
                 
             }
 
+            return;
+        }
+
+        if(gamePhase == Phase.Strategy){
+            gamePhase = Phase.UnitTurn;
+            StartCoroutine(UnitsTakeTurns());
             return;
         }
 
@@ -835,7 +986,7 @@ public class GameManager : MonoBehaviour
                     unitCard.statusEffects.Remove(status);
                 }
 
-                CheckForDeath(unitCard.gameObject);
+                StartCoroutine(CheckForDeath(unitCard.gameObject));
             }
 
             if(unitCard.GetComponent<CardBonusEffects>()){

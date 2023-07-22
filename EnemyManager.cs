@@ -1044,7 +1044,8 @@ public class EnemyManager : MonoBehaviour
 
 
         if(ab.abilityType == Ability.AbilityType.Summon){
-            if(!gm.enemyUnits.Contains(null)){return 0;}
+            // note: limit to 10?
+            // if(!gm.enemyUnits.Contains(null)){return 0;}
             pVal += (DetermineUnitValue(null, ab.summonedUnit) * 2);
         }
 

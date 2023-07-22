@@ -6,6 +6,9 @@ using NaughtyAttributes;
 
 public class UnitCard : MonoBehaviour
 {
+    [Header("Stuff")]
+    public GameObject leftIndicator;
+    public GameObject rightIndicator;
     [Header("Stats")]
     public int boardPos;
     public bool attackedThisTurn;

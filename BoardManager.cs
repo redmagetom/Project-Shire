@@ -17,10 +17,12 @@ public class BoardManager : MonoBehaviour
     [Header("Player Board Objects")]
     public GameObject playerDeckVisual;
     public List<GameObject> playerHeroCards;
+    public GameObject playerUnitsCenter;
     public List<GameObject> playerUnitCards;
     [Header("Enemy Board Objects")]
     public GameObject enemyDeckVisual;
     public List<GameObject> enemyHeroCards;
+    public GameObject enemyUnitsCenter;
     public List<GameObject> enemyUnitCards;
 
 
